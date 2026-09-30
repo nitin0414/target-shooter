@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Target Shooter - Fast-Paced Arcade Shooting Game</title>
+  <meta name="description" content="Fast-paced arcade target shooting game with custom synthesized sound effects, dynamic moving targets, combo streaks, and responsive controls.">
+  <meta property="og:title" content="Target Shooter - Fast-Paced Arcade Shooting Game">
+  <meta property="og:description" content="Fast-paced arcade target shooting game with custom synthesized sound effects, dynamic moving targets, combo streaks, and responsive controls.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0c14;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #e2e8f0;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      cursor: crosshair;
+      touch-action: none;
+      background: radial-gradient(circle at 50% 50%, #151c2e 0%, #07090e 100%);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Screen overlays */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(8, 11, 20, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 20;
+      padding: 20px;
+      text-align: center;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .panel {
+      background: linear-gradient(145deg, rgba(26, 32, 53, 0.95), rgba(13, 17, 30, 0.98));
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 18px;
+      padding: 32px 40px;
+      max-width: 520px;
+      width: 100%;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 35px rgba(56, 189, 248, 0.15);
+      position: relative;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.92); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    h1.title {
+      font-size: 2.8rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #f43f5e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: #94a3b8;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .instructions-box {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 22px;
+      text-align: left;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .instructions-box h3 {
+      font-size: 0.85rem;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .targets-legend {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 0.8rem;
+    }
+
+    .target-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-standard { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+    .dot-fast { background: #06b6d4; box-shadow: 0 0 6px #06b6d4; }
+    .dot-armored { background: #eab308; box-shadow: 0 0 6px #eab308; }
+    .dot-bomb { background: #991b1b; box-shadow: 0 0 6px #ef4444; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 14px 32px;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(2, 132, 199, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+      transition: all 0.15s ease;
+      width: 100%;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(2, 132, 199, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+      background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-secondary {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #94a3b8;
+      font-size: 0.95rem;
+      padding: 10px 20px;
+      margin-top: 10px;
+      box-shadow: none;
+    }
+    .btn-secondary:hover {
+      background: rgba(51, 65, 85, 0.9);
+      color: #f8fafc;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Stats Grid on Game Over */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .stat-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+
+    .highlight-score {
+      color: #38bdf8;
+      font-size: 2.2rem;
+    }
+
+    .new-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    /* In-game HUD */
+    #hud {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px 20px;
+    }
+
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .hud-box {
+      background: rgba(10, 14, 26, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 8px 16px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .hud-box-score {
+      min-width: 140px;
+    }
+
+    .hud-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #64748b;
+    }
+
+    .hud-value {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.1;
+    }
+
+    .hud-combo {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .combo-badge {
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 900;
+      padding: 2px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 0 12px rgba(249, 115, 22, 0.6);
+      transition: transform 0.15s ease;
+    }
+
+    .hud-timer {
+      font-variant-numeric: tabular-nums;
+      color: #38bdf8;
+      font-size: 1.7rem;
+    }
+
+    .hud-timer.urgent {
+      color: #ef4444;
+      animation: timerBlink 0.6s infinite;
+    }
+
+    @keyframes timerBlink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.05); }
+    }
+
+    .hud-controls-top {
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .icon-btn {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      color: #94a3b8;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      color: #fff;
+      background: rgba(30, 41, 59, 0.9);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+    }
+
+    .ammo-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .bullet-icons {
+      display: flex;
+      gap: 6px;
+      background: rgba(10, 14, 26, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .bullet {
+      width: 10px;
+      height: 24px;
+      border-radius: 4px 4px 2px 2px;
+      background: linear-gradient(180deg, #fef08a 0%, #ca8a04 40%, #854d0e 100%);
+      box-shadow: 0 0 8px rgba(234, 179, 8, 0.5);
+      transition: opacity 0.15s, transform 0.15s;
+    }
+
+    .bullet.spent {
+      background: #334155;
+      box-shadow: none;
+      opacity: 0.3;
+      transform: scaleY(0.85);
+    }
+
+    .reload-action-btn {
+      pointer-events: auto;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      transition: all 0.15s ease;
+    }
+
+    .reload-action-btn:hover {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #fff;
+      border-color: #38bdf8;
+    }
+
+    .reload-action-btn.reloading {
+      border-color: #f59e0b;
+      color: #f59e0b;
+      animation: pulse 1s infinite;
+    }
+
+    .reload-prompt-banner {
+      position: absolute;
+      bottom: 95px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(239, 68, 68, 0.9);
+      color: #fff;
+      padding: 8px 24px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
+      pointer-events: auto;
+      cursor: pointer;
+      animation: pulse 0.8s infinite;
+      display: none;
+    }
+
+    .reload-prompt-banner.show {
+      display: block;
+    }
+
+    /* Custom Mobile Controls or Touch Helper */
+    .touch-hint {
+      display: none;
+      font-size: 0.75rem;
+      color: #64748b;
+      text-align: center;
+      margin-top: 6px;
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      .touch-hint { display: block; }
+      .instructions-box .desktop-keys { display: none; }
+    }
+
+    @media (max-width: 600px) {
+      .panel { padding: 24px 20px; }
+      h1.title { font-size: 2.1rem; }
+      .hud-value { font-size: 1.2rem; }
+      .hud-box { padding: 6px 10px; }
+      .bullet { width: 7px; height: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- In-Game HUD -->
+    <div id="hud">
+      <div class="hud-top">
+        <div class="hud-box hud-box-score">
+          <div class="hud-label">Score</div>
+          <div class="hud-value" id="hud-score">0</div>
+        </div>
+
+        <div class="hud-box" style="display:flex; flex-direction:column; align-items:center;">
+          <div class="hud-label">Time</div>
+          <div class="hud-value hud-timer" id="hud-time">60</div>
+        </div>
+
+        <div class="hud-box" style="display:flex; flex-direction:column; align-items:flex-end;">
+          <div class="hud-label">Combo</div>
+          <div class="hud-combo">
+            <span class="combo-badge" id="hud-combo">1x</span>
+          </div>
+        </div>
+
+        <div class="hud-controls-top">
+          <button class="icon-btn" id="sound-btn" title="Toggle Sound">
+            <svg id="sound-icon-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <svg id="sound-icon-off" style="display:none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+          </button>
+          <button class="icon-btn" id="pause-btn" title="Pause Game">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="4" width="4" height="16"></rect>
+              <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="reload-prompt-banner" id="reload-banner">OUT OF AMMO! TAP TO RELOAD (R)</div>
+
+      <div class="hud-bottom">
+        <div class="ammo-container">
+          <div class="bullet-icons" id="bullet-tray"></div>
+          <div class="touch-hint">Tap screen / click to shoot</div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button class="reload-action-btn" id="reload-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            <span id="reload-text">RELOAD [R]</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start Screen Overlay -->
+    <div class="overlay" id="start-overlay">
+      <div class="panel">
+        <h1 class="title">Target Shooter</h1>
+        <p class="subtitle">Arcade Reflex Challenge</p>
+
+        <div class="instructions-box">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            Mission Briefing
+          </h3>
+          <p>Aim and click or tap moving targets to score. Land hits in succession to build up your <strong>Combo Multiplier</strong>! Missing a shot or shooting a hazard resets your streak.</p>
+          <p class="desktop-keys" style="margin-top:6px; color:#cbd5e1;"><strong>Controls:</strong> Mouse/Touch to aim & shoot. <strong>[R]</strong> to Reload. <strong>[P]</strong> to Pause.</p>
+
+          <div class="targets-legend">
+            <div class="target-tag"><div class="dot dot-standard"></div> Standard (+100)</div>
+            <div class="target-tag"><div class="dot dot-fast"></div> Fast Drone (+250)</div>
+            <div class="target-tag"><div class="dot dot-armored"></div> Heavy Shield (2 Hits)</div>
+            <div class="target-tag"><div class="dot dot-bomb"></div> Bomb Hazard (Avoid!)</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <span style="font-size:0.85rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1px;">Personal Best: </span>
+          <span id="start-highscore" style="font-size:1.3rem; font-weight:800; color:#38bdf8;">0</span>
+        </div>
+
+        <button class="btn" id="start-btn">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          START GAME
+        </button>
+      </div>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div class="overlay hidden" id="pause-overlay">
+      <div class="panel" style="max-width: 380px;">
+        <h2 style="font-size: 2rem; margin-bottom: 8px; color:#f8fafc;">GAME PAUSED</h2>
+        <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 24px;">Take a breath, sharpshooter.</p>
+        <button class="btn" id="resume-btn" style="margin-bottom: 10px;">RESUME</button>
+        <button class="btn btn-secondary" id="pause-restart-btn">RESTART ROUND</button>
+      </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div class="overlay hidden" id="gameover-overlay">
+      <div class="panel">
+        <div id="new-record-badge" class="new-badge" style="display:none;">New Personal Best!</div>
+        <h2 style="font-size: 2.3rem; font-weight:900; margin-bottom: 4px; text-transform:uppercase; letter-spacing:1px; color:#f8fafc;">Round Over</h2>
+        <p style="color: #94a3b8; font-size: 0.9rem; text-transform:uppercase; letter-spacing:1px; margin-bottom: 12px;">Final Performance</p>
+
+        <div class="stat-value highlight-score" id="gameover-score">0</div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Accuracy</div>
+            <div class="stat-value" id="gameover-accuracy">0%</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Max Combo</div>
+            <div class="stat-value" id="gameover-combo">1x</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Hits</div>
+            <div class="stat-value" id="gameover-hits">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Misses</div>
+            <div class="stat-value" id="gameover-misses">0</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 18px; font-size:0.9rem; color:#94a3b8;">
+          All-Time High Score: <strong id="gameover-highscore" style="color:#38bdf8;">0</strong>
+        </div>
+
+        <button class="btn" id="restart-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <polyline points="23 20 23 14 17 14"></polyline>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+          </svg>
+          PLAY AGAIN
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       TARGET SHOOTER - SELF-CONTAINED ARCADE ENGINE
+       Web Audio API Synthesized Sounds, Canvas 2D, Particle Physics
+       ========================================================================== */
+
+    // --- SOUND ENGINE (Web Audio API) ---
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playGunshot() {
+        if (!this.enabled || !this.ctx) return;
+        this.init();
+        const now = this.ctx.currentTime;
+
+        // 1. Transient sharp punch (Sub kick / thump)
+        const osc = this.ctx.createOscillator();
+        const oscGain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+        oscGain.gain.setValueAtTime(1.0, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(oscGain);
+        oscGain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+
+        // 2. White noise burst for muzzle blast
+        const bufferSize = this.ctx.sampleRate * 0.16;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1400, now);
+        filter.frequency.exponentialRampToValueAtTime(300, now + 0.15);
+        filter.Q.setValueAtTime(2.5, now);
+
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.9, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+        whiteNoise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+        whiteNoise.start(now);
+        whiteNoise.stop(now + 0.16);
+      }
+
+      playHit(combo = 1, isBullseye = false) {
+        if (!this.enabled || !this.ctx) return;
+        this.init();
+        const now = this.ctx.currentTime;
+
+        // Pitch increases with combo multiplier for satisfaction
+        const baseFreq = isBullseye ? 650 : 440;
+        const comboFreq = baseFreq + Math.min(combo * 45, 600);
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = isBullseye ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(comboFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(comboFreq * 1.5, now + 0.08);
+
+        gain.gain.setValueAtTime(0.65, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (isBullseye ? 0.22 : 0.15));
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+
+      playMiss() {
+        if (!this.enabled || !this.ctx) return;
+        this.init();
+        const now = this.ctx.currentTime;
+
+        // Low dull thud / whoosh
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+
+      playDryFire() {
+        if (!this.enabled || !this.ctx) return;
+        this.init();
+        const now = this.ctx.currentTime;
+
+        // Mechanical metallic click
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(300, now + 0.04);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.04);
+      }
+
+      playReload() {
+        if (!this.enabled || !this.ctx) return;
+        this.init();
+        const now = this.ctx.currentTime;
+
+        // Mag release slide
+        const osc1 = this.ctx.createOscillator();
+        const gain1 = this.ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(350, now);
+        osc1.frequency.exponentialRampToValueAtTime(180, now + 0.12);
+        gain1.gain.setValueAtTime(0.25, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc1.connect(gain1);
+        gain1.connect(this.ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.12);
+
+        // Mag snap lock in
+        setTimeout(() => {
+          if (!this.ctx || !this.enabled) return;
+          const snapTime = this.ctx.currentTime;
+          const osc2 = this.ctx.createOscillator();
+          const gain2 = this.ctx.createGain();
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(200, snapTime);
+          osc2.frequency.setValueAtTime(500, snapTime + 0.03);
+          osc2.frequency.exponentialRampToValueAtTime(100, snapTime + 0.12);
+          gain2.gain.setValueAtTime(0.4, snapTime);
+          gain2.gain.exponentialRampToValueAtTime(0.001, snapTime + 0.12);
+          osc2.connect(gain2);
+          gain2.connect(this.ctx.destination);
+          osc2.start(snapTime);
+          osc2.stop(snapTime + 0.12);
+        }, 550);
+      }
+
+      playExplosion() {
+        if (!this.enabled || !this.ctx) return;
+        this.init();
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.exponentialRampToValueAtTime(25, now + 0.35);
+        gain.gain.setValueAtTime(0.8, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
+
+      playBonus() {
+        if (!this.enabled || !this.ctx) return;
+        this.init();
+        const now = this.ctx.currentTime;
+
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+          gain.gain.setValueAtTime(0.3, now + idx * 0.06);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.15);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.06);
+          osc.stop(now + idx * 0.06 + 0.15);
+        });
+      }
+    }
+
+    // --- GAME ENGINE ---
+    const sound = new SoundEngine();
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('game-container');
+
+    // UI Elements
+    const hudScore = document.getElementById('hud-score');
+    const hudTime = document.getElementById('hud-time');
+    const hudCombo = document.getElementById('hud-combo');
+    const bulletTray = document.getElementById('bullet-tray');
+    const reloadBtn = document.getElementById('reload-btn');
+    const reloadText = document.getElementById('reload-text');
+    const reloadBanner = document.getElementById('reload-banner');
+    const soundBtn = document.getElementById('sound-btn');
+    const soundIconOn = document.getElementById('sound-icon-on');
+    const soundIconOff = document.getElementById('sound-icon-off');
+    const pauseBtn = document.getElementById('pause-btn');
+
+    // Overlays
+    const startOverlay = document.getElementById('start-overlay');
+    const pauseOverlay = document.getElementById('pause-overlay');
+    const gameoverOverlay = document.getElementById('gameover-overlay');
+    const startBtn = document.getElementById('start-btn');
+    const resumeBtn = document.getElementById('resume-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const pauseRestartBtn = document.getElementById('pause-restart-btn');
+    const startHighscore = document.getElementById('start-highscore');
+
+    // Stats Elements
+    const gameoverScore = document.getElementById('gameover-score');
+    const gameoverAccuracy = document.getElementById('gameover-accuracy');
+    const gameoverCombo = document.getElementById('gameover-combo');
+    const gameoverHits = document.getElementById('gameover-hits');
+    const gameoverMisses = document.getElementById('gameover-misses');
+    const gameoverHighscore = document.getElementById('gameover-highscore');
+    const newRecordBadge = document.getElementById('new-record-badge');
+
+    // State Constants
+    const MAX_AMMO = 7;
+    const ROUND_DURATION = 60; // 60 seconds round
+    const RELOAD_TIME = 900; // ms
+
+    // Game Variables
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+
+    let gameState = 'START'; // 'START' | 'PLAYING' | 'PAUSED' | 'GAMEOVER'
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem('target_shooter_highscore') || '0', 10);
+    let timeLeft = ROUND_DURATION;
+    let combo = 1;
+    let maxCombo = 1;
+    let hits = 0;
+    let misses = 0;
+    let bullseyes = 0;
+
+    let ammo = MAX_AMMO;
+    let isReloading = false;
+    let reloadStartTime = 0;
+
+    // Crosshair state
+    let crosshair = {
+      x: 0,
+      y: 0,
+      targetX: 0,
+      targetY: 0,
+      recoil: 0,
+      active: false
+    };
+
+    // Screen Shake & Effects
+    let screenShake = 0;
+    let flashAlpha = 0;
+    let flashColor = '#ffffff';
+
+    // Entities
+    let targets = [];
+    let particles = [];
+    let floatingTexts = [];
+    let bulletHoles = [];
+    let muzzleFlashes = [];
+
+    // Timers & Spawning
+    let lastTime = performance.now();
+    let spawnTimer = 0;
+    let gameTimerInterval = null;
+
+    // High score init display
+    startHighscore.textContent = highScore.toLocaleString();
+
+    // Canvas Resize Handler
+    function resizeCanvas() {
+      dpr = window.devicePixelRatio || 1;
+      width = container.clientWidth;
+      height = container.clientHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      if (!crosshair.active) {
+        crosshair.x = width / 2;
+        crosshair.y = height / 2;
+      }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Setup Bullets Display in HUD
+    function renderAmmoHUD() {
+      bulletTray.innerHTML = '';
+      for (let i = 0; i < MAX_AMMO; i++) {
+        const b = document.createElement('div');
+        b.className = 'bullet' + (i < ammo ? '' : ' spent');
+        bulletTray.appendChild(b);
+      }
+
+      if (ammo === 0 && !isReloading) {
+        reloadBanner.classList.add('show');
+        reloadBtn.classList.add('reloading');
+      } else {
+        reloadBanner.classList.remove('show');
+        if (!isReloading) {
+          reloadBtn.classList.remove('reloading');
+          reloadText.textContent = 'RELOAD [R]';
+        }
+      }
+    }
+
+    // Audio Toggle Handler
+    soundBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sound.enabled = !sound.enabled;
+      if (sound.enabled) {
+        sound.init();
+        soundIconOn.style.display = 'block';
+        soundIconOff.style.display = 'none';
+      } else {
+        soundIconOn.style.display = 'none';
+        soundIconOff.style.display = 'block';
+      }
+    });
+
+    // --- TARGET CLASS ---
+    class Target {
+      constructor(type = 'standard') {
+        this.type = type; // 'standard', 'fast', 'armored', 'bonus', 'bomb'
+        this.alive = true;
+        this.opacity = 0;
+        this.scale = 0.2;
+        this.targetScale = 1;
+        this.age = 0;
+        this.pulse = 0;
+
+        // Base characteristics per type
+        if (this.type === 'fast') {
+          this.radius = Math.max(20, Math.min(width, height) * 0.038);
+          this.baseSpeed = 3.5 + Math.random() * 2.0;
+          this.health = 1;
+          this.points = 250;
+          this.color = '#06b6d4';
+        } else if (this.type === 'armored') {
+          this.radius = Math.max(34, Math.min(width, height) * 0.055);
+          this.baseSpeed = 1.2 + Math.random() * 0.8;
+          this.health = 2;
+          this.maxHealth = 2;
+          this.points = 300;
+          this.color = '#eab308';
+        } else if (this.type === 'bonus') {
+          this.radius = Math.max(24, Math.min(width, height) * 0.042);
+          this.baseSpeed = 2.4 + Math.random() * 1.5;
+          this.health = 1;
+          this.points = 500;
+          this.color = '#10b981';
+          this.lifespan = 4500; // Departs if unhit
+        } else if (this.type === 'bomb') {
+          this.radius = Math.max(28, Math.min(width, height) * 0.045);
+          this.baseSpeed = 1.4 + Math.random() * 1.2;
+          this.health = 1;
+          this.points = -300;
+          this.color = '#dc2626';
+        } else {
+          // Standard bullseye
+          this.radius = Math.max(28, Math.min(width, height) * 0.048);
+          this.baseSpeed = 1.6 + Math.random() * 1.4;
+          this.health = 1;
+          this.points = 100;
+          this.color = '#ef4444';
+        }
+
+        // Spawn margin so target is safely inside playing field
+        const margin = this.radius * 2;
+        this.x = margin + Math.random() * (width - margin * 2);
+        this.y = margin + 60 + Math.random() * (height - margin * 2 - 120);
+
+        // Movement trajectory
+        const angle = Math.random() * Math.PI * 2;
+        this.vx = Math.cos(angle) * this.baseSpeed;
+        this.vy = Math.sin(angle) * this.baseSpeed;
+
+        // Sine wave oscillation for fast / bonus targets
+        this.oscillates = (this.type === 'fast' || this.type === 'bonus');
+        this.oscOffset = Math.random() * Math.PI * 2;
+      }
+
+      update(dt) {
+        this.age += dt;
+        this.pulse += dt * 0.005;
+
+        // Entry spawn animation
+        if (this.scale < this.targetScale) {
+          this.scale = Math.min(this.targetScale, this.scale + dt * 0.005);
+        }
+        if (this.opacity < 1) {
+          this.opacity = Math.min(1, this.opacity + dt * 0.006);
+        }
+
+        // Position update
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.oscillates) {
+          this.y += Math.sin(this.age * 0.008 + this.oscOffset) * 1.4;
+        }
+
+        // Bounce off walls
+        const r = this.radius;
+        const topBound = 70;
+        const bottomBound = height - 90;
+
+        if (this.x - r < 10) {
+          this.x = 10 + r;
+          this.vx = Math.abs(this.vx);
+        } else if (this.x + r > width - 10) {
+          this.x = width - 10 - r;
+          this.vx = -Math.abs(this.vx);
+        }
+
+        if (this.y - r < topBound) {
+          this.y = topBound + r;
+          this.vy = Math.abs(this.vy);
+        } else if (this.y + r > bottomBound) {
+          this.y = bottomBound - r;
+          this.vy = -Math.abs(this.vy);
+        }
+
+        // Bonus target timeout
+        if (this.type === 'bonus' && this.age > this.lifespan) {
+          this.alive = false;
+        }
+      }
+
+      draw(c) {
+        c.save();
+        c.translate(this.x, this.y);
+        c.scale(this.scale, this.scale);
+        c.globalAlpha = this.opacity;
+
+        const r = this.radius;
+
+        if (this.type === 'standard') {
+          // Classic Bullseye target with rings
+          // Outer drop shadow
+          c.beginPath();
+          c.arc(0, 0, r, 0, Math.PI * 2);
+          c.fillStyle = 'rgba(0,0,0,0.35)';
+          c.fill();
+
+          // Ring 1 (Red)
+          c.beginPath();
+          c.arc(0, 0, r, 0, Math.PI * 2);
+          c.fillStyle = '#ef4444';
+          c.fill();
+          c.lineWidth = 2.5;
+          c.strokeStyle = '#ffffff';
+          c.stroke();
+
+          // Ring 2 (White)
+          c.beginPath();
+          c.arc(0, 0, r * 0.72, 0, Math.PI * 2);
+          c.fillStyle = '#f8fafc';
+          c.fill();
+
+          // Ring 3 (Red)
+          c.beginPath();
+          c.arc(0, 0, r * 0.44, 0, Math.PI * 2);
+          c.fillStyle = '#ef4444';
+          c.fill();
+
+          // Bullseye Gold Center
+          c.beginPath();
+          c.arc(0, 0, r * 0.22, 0, Math.PI * 2);
+          c.fillStyle = '#f59e0b';
+          c.fill();
+          c.lineWidth = 1.5;
+          c.strokeStyle = '#fef08a';
+          c.stroke();
+
+        } else if (this.type === 'fast') {
+          // Cyan Neon Drone
+          const angle = Math.atan2(this.vy, this.vx);
+          c.rotate(angle);
+
+          // Outer glow diamond
+          c.beginPath();
+          c.moveTo(r * 1.3, 0);
+          c.lineTo(0, -r * 0.75);
+          c.lineTo(-r * 0.8, 0);
+          c.lineTo(0, r * 0.75);
+          c.closePath();
+          c.fillStyle = 'rgba(6, 182, 212, 0.25)';
+          c.fill();
+          c.lineWidth = 2.5;
+          c.strokeStyle = '#06b6d4';
+          c.shadowColor = '#06b6d4';
+          c.shadowBlur = 14;
+          c.stroke();
+          c.shadowBlur = 0;
+
+          // Inner core
+          c.beginPath();
+          c.arc(0, 0, r * 0.4, 0, Math.PI * 2);
+          c.fillStyle = '#ffffff';
+          c.fill();
+
+        } else if (this.type === 'armored') {
+          // Hexagonal Heavy Shield
+          const sides = 6;
+          c.beginPath();
+          for (let i = 0; i < sides; i++) {
+            const a = (i * Math.PI * 2) / sides;
+            const px = Math.cos(a) * r;
+            const py = Math.sin(a) * r;
+            if (i === 0) c.moveTo(px, py);
+            else c.lineTo(px, py);
+          }
+          c.closePath();
+          c.fillStyle = this.health === 2 ? '#b45309' : '#78350f';
+          c.fill();
+          c.lineWidth = 4;
+          c.strokeStyle = '#fde047';
+          c.stroke();
+
+          // Inner shield plate
+          c.beginPath();
+          c.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+          c.fillStyle = this.health === 2 ? '#eab308' : '#ca8a04';
+          c.fill();
+
+          // Armor health indicator
+          c.fillStyle = '#ffffff';
+          c.font = `bold ${Math.floor(r * 0.55)}px sans-serif`;
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText(this.health === 2 ? '2' : '1', 0, 1);
+
+        } else if (this.type === 'bonus') {
+          // Pulsing Golden Time/Star Target
+          const pulseScale = 1 + Math.sin(this.pulse * 4) * 0.08;
+          c.scale(pulseScale, pulseScale);
+
+          c.beginPath();
+          c.arc(0, 0, r, 0, Math.PI * 2);
+          c.fillStyle = '#10b981';
+          c.fill();
+          c.lineWidth = 3;
+          c.strokeStyle = '#6ee7b7';
+          c.shadowColor = '#10b981';
+          c.shadowBlur = 18;
+          c.stroke();
+          c.shadowBlur = 0;
+
+          // Plus / Star symbol
+          c.fillStyle = '#ffffff';
+          c.font = `bold ${Math.floor(r * 0.7)}px sans-serif`;
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText('+3s', 0, 1);
+
+        } else if (this.type === 'bomb') {
+          // Hazard Bomb (Avoid!)
+          c.beginPath();
+          c.arc(0, 0, r, 0, Math.PI * 2);
+          c.fillStyle = '#1e1b4b';
+          c.fill();
+          c.lineWidth = 3;
+          c.strokeStyle = '#dc2626';
+          c.shadowColor = '#ef4444';
+          c.shadowBlur = 15;
+          c.stroke();
+          c.shadowBlur = 0;
+
+          // Hazard Cross / Skull symbol
+          c.fillStyle = '#ef4444';
+          c.font = `bold ${Math.floor(r * 0.85)}px sans-serif`;
+          c.textAlign = 'center';
+          c.textBaseline = 'middle';
+          c.fillText('⚠', 0, 2);
+        }
+
+        c.restore();
+      }
+
+      checkHit(px, py) {
+        const dx = px - this.x;
+        const dy = py - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= this.radius) {
+          // Check for bullseye (within 28% of center for standard targets)
+          const isBullseye = this.type === 'standard' && (dist <= this.radius * 0.28);
+          return { hit: true, isBullseye, dist };
+        }
+        return { hit: false };
+      }
+    }
+
+    // --- PARTICLES & VISUAL EFFECTS ---
+    class Particle {
+      constructor(x, y, color, speedMultiplier = 1) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = (2 + Math.random() * 7) * speedMultiplier;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.size = 2 + Math.random() * 4.5;
+        this.alpha = 1;
+        this.decay = 0.02 + Math.random() * 0.035;
+        this.gravity = 0.12;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += this.gravity;
+        this.vx *= 0.96;
+        this.vy *= 0.96;
+        this.alpha -= this.decay;
+      }
+
+      draw(c) {
+        c.save();
+        c.globalAlpha = Math.max(0, this.alpha);
+        c.fillStyle = this.color;
+        c.beginPath();
+        c.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      }
+    }
+
+    class FloatingText {
+      constructor(x, y, text, color = '#38bdf8', scale = 1) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.color = color;
+        this.alpha = 1;
+        this.scale = scale;
+        this.vy = -1.8;
+      }
+
+      update() {
+        this.y += this.vy;
+        this.vy *= 0.95;
+        this.alpha -= 0.022;
+      }
+
+      draw(c) {
+        c.save();
+        c.globalAlpha = Math.max(0, this.alpha);
+        c.font = `900 ${Math.floor(20 * this.scale)}px sans-serif`;
+        c.fillStyle = this.color;
+        c.textAlign = 'center';
+        c.shadowColor = 'rgba(0,0,0,0.9)';
+        c.shadowBlur = 6;
+        c.fillText(this.text, this.x, this.y);
+        c.restore();
+      }
+    }
+
+    class BulletHole {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.alpha = 0.85;
+      }
+
+      update() {
+        this.alpha -= 0.002;
+      }
+
+      draw(c) {
+        c.save();
+        c.globalAlpha = Math.max(0, this.alpha);
+
+        // Dark crater
+        c.beginPath();
+        c.arc(this.x, this.y, 4.5, 0, Math.PI * 2);
+        c.fillStyle = '#0f172a';
+        c.fill();
+        c.lineWidth = 1;
+        c.strokeStyle = 'rgba(255,255,255,0.2)';
+        c.stroke();
+
+        // Singe scorch ring
+        c.beginPath();
+        c.arc(this.x, this.y, 8.5, 0, Math.PI * 2);
+        c.fillStyle = 'rgba(0,0,0,0.25)';
+        c.fill();
+
+        c.restore();
+      }
+    }
+
+    function spawnMuzzleFlash(x, y) {
+      muzzleFlashes.push({
+        x,
+        y,
+        radius: 36,
+        alpha: 1,
+        rays: 8
+      });
+      screenShake = Math.max(screenShake, 6.5);
+    }
+
+    function createExplosionParticles(x, y, color, count = 22) {
+      for (let i = 0; i < count; i++) {
+        particles.push(new Particle(x, y, color, 1.2));
+      }
+      // Add a few bright spark particles
+      for (let i = 0; i < 8; i++) {
+        particles.push(new Particle(x, y, '#ffffff', 1.8));
+      }
+    }
+
+    // --- GAME ACTIONS: SHOOT & RELOAD ---
+
+    function reload() {
+      if (isReloading || ammo === MAX_AMMO) return;
+      isReloading = true;
+      reloadStartTime = performance.now();
+      reloadBtn.classList.add('reloading');
+      reloadText.textContent = 'RELOADING...';
+      sound.playReload();
+
+      floatingTexts.push(new FloatingText(crosshair.x, crosshair.y - 30, 'RELOADING...', '#f59e0b', 0.9));
+
+      setTimeout(() => {
+        if (gameState === 'PLAYING') {
+          ammo = MAX_AMMO;
+          isReloading = false;
+          renderAmmoHUD();
+        }
+      }, RELOAD_TIME);
+    }
+
+    function shoot(targetX, targetY) {
+      if (gameState !== 'PLAYING') return;
+
+      // Check ammo
+      if (ammo <= 0) {
+        sound.playDryFire();
+        screenShake = 2;
+        floatingTexts.push(new FloatingText(targetX, targetY - 20, 'CLICK! (RELOAD)', '#ef4444', 0.9));
+        reload();
+        return;
+      }
+
+      if (isReloading) {
+        sound.playDryFire();
+        return;
+      }
+
+      // Consume ammo
+      ammo--;
+      renderAmmoHUD();
+
+      // Gunshot sound & Visual FX
+      sound.playGunshot();
+      spawnMuzzleFlash(targetX, targetY);
+      crosshair.recoil = 18;
+
+      // Check collision with targets (check from top to bottom)
+      let hitSomething = false;
+
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i];
+        const res = t.checkHit(targetX, targetY);
+
+        if (res.hit) {
+          hitSomething = true;
+          hits++;
+
+          if (t.type === 'bomb') {
+            // Shot a hazard!
+            sound.playExplosion();
+            score = Math.max(0, score + t.points);
+            combo = 1;
+            flashAlpha = 0.5;
+            flashColor = '#ef4444';
+            screenShake = 14;
+
+            createExplosionParticles(t.x, t.y, '#dc2626', 30);
+            floatingTexts.push(new FloatingText(t.x, t.y, 'HAZARD! -300', '#ef4444', 1.3));
+            targets.splice(i, 1);
+            break;
+          }
+
+          t.health--;
+
+          if (t.health <= 0) {
+            // Target destroyed
+            targets.splice(i, 1);
+            createExplosionParticles(t.x, t.y, t.color, 24);
+
+            let addedScore = t.points * combo;
+            let label = `+${addedScore}`;
+
+            if (res.isBullseye) {
+              bullseyes++;
+              addedScore += 150 * combo;
+              label = `BULLSEYE! +${addedScore}`;
+              sound.playHit(combo, true);
+              flashAlpha = 0.18;
+              flashColor = '#f59e0b';
+            } else if (t.type === 'bonus') {
+              timeLeft += 3;
+              hudTime.textContent = Math.ceil(timeLeft);
+              sound.playBonus();
+              label = `TIME +3s! (+${addedScore})`;
+            } else {
+              sound.playHit(combo, false);
+            }
+
+            score += addedScore;
+            combo = Math.min(10, combo + 1);
+            maxCombo = Math.max(maxCombo, combo);
+
+            floatingTexts.push(new FloatingText(t.x, t.y - 10, label, res.isBullseye ? '#f59e0b' : '#38bdf8', res.isBullseye ? 1.25 : 1.0));
+          } else {
+            // Armored target damaged
+            sound.playHit(combo, false);
+            createExplosionParticles(t.x, t.y, '#ffffff', 12);
+            floatingTexts.push(new FloatingText(t.x, t.y - 10, 'ARMOR HIT!', '#eab308', 0.9));
+          }
+
+          break;
+        }
+      }
+
+      // If missed all targets
+      if (!hitSomething) {
+        misses++;
+        combo = 1;
+        sound.playMiss();
+        bulletHoles.push(new BulletHole(targetX, targetY));
+        createExplosionParticles(targetX, targetY, '#64748b', 6);
+        floatingTexts.push(new FloatingText(targetX, targetY - 15, 'MISS', '#94a3b8', 0.85));
+      }
+
+      // Update HUD
+      hudScore.textContent = score.toLocaleString();
+      hudCombo.textContent = `${combo}x`;
+      hudCombo.style.transform = 'scale(1.25)';
+      setTimeout(() => { hudCombo.style.transform = 'scale(1)'; }, 150);
+    }
+
+    // --- TARGET SPAWNING LOGIC ---
+    function spawnTargetLogic(dt) {
+      spawnTimer += dt;
+
+      // Difficulty ramps over round duration
+      const elapsed = ROUND_DURATION - timeLeft;
+      const progress = Math.min(1, elapsed / ROUND_DURATION);
+
+      // Max targets scales from 3 to 7
+      const maxTargets = Math.floor(3 + progress * 4);
+      // Spawn interval decreases from 1300ms down to 600ms
+      const spawnInterval = Math.max(600, 1300 - progress * 700);
+
+      if (spawnTimer >= spawnInterval && targets.length < maxTargets) {
+        spawnTimer = 0;
+
+        // Choose target type based on RNG and difficulty
+        const rand = Math.random();
+        let type = 'standard';
+
+        if (rand < 0.22) {
+          type = 'fast';
+        } else if (rand < 0.40) {
+          type = 'armored';
+        } else if (rand < 0.52) {
+          type = 'bomb';
+        } else if (rand < 0.62 && timeLeft < 45) {
+          type = 'bonus';
+        }
+
+        targets.push(new Target(type));
+      }
+    }
+
+    // --- GAME LIFECYCLE ---
+
+    function startGame() {
+      sound.init();
+      gameState = 'PLAYING';
+      score = 0;
+      timeLeft = ROUND_DURATION;
+      combo = 1;
+      maxCombo = 1;
+      hits = 0;
+      misses = 0;
+      bullseyes = 0;
+      ammo = MAX_AMMO;
+      isReloading = false;
+
+      targets = [];
+      particles = [];
+      floatingTexts = [];
+      bulletHoles = [];
+      muzzleFlashes = [];
+
+      hudScore.textContent = '0';
+      hudTime.textContent = ROUND_DURATION;
+      hudTime.classList.remove('urgent');
+      hudCombo.textContent = '1x';
+      renderAmmoHUD();
+
+      startOverlay.classList.add('hidden');
+      pauseOverlay.classList.add('hidden');
+      gameoverOverlay.classList.add('hidden');
+
+      // Initial targets
+      targets.push(new Target('standard'));
+      targets.push(new Target('standard'));
+      targets.push(new Target('fast'));
+
+      // Timer countdown
+      if (gameTimerInterval) clearInterval(gameTimerInterval);
+      gameTimerInterval = setInterval(() => {
+        if (gameState !== 'PLAYING') return;
+
+        timeLeft--;
+        hudTime.textContent = Math.max(0, timeLeft);
+
+        if (timeLeft <= 10) {
+          hudTime.classList.add('urgent');
+        }
+
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function togglePause() {
+      if (gameState === 'PLAYING') {
+        gameState = 'PAUSED';
+        pauseOverlay.classList.remove('hidden');
+      } else if (gameState === 'PAUSED') {
+        gameState = 'PLAYING';
+        pauseOverlay.classList.add('hidden');
+        lastTime = performance.now();
+      }
+    }
+
+    function endGame() {
+      gameState = 'GAMEOVER';
+      if (gameTimerInterval) clearInterval(gameTimerInterval);
+
+      // Check high score
+      let isNewHigh = false;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('target_shooter_highscore', highScore.toString());
+        isNewHigh = true;
+      }
+
+      const totalShots = hits + misses;
+      const accuracy = totalShots > 0 ? Math.round((hits / totalShots) * 100) : 0;
+
+      gameoverScore.textContent = score.toLocaleString();
+      gameoverAccuracy.textContent = `${accuracy}%`;
+      gameoverCombo.textContent = `${maxCombo}x`;
+      gameoverHits.textContent = hits;
+      gameoverMisses.textContent = misses;
+      gameoverHighscore.textContent = highScore.toLocaleString();
+      startHighscore.textContent = highScore.toLocaleString();
+
+      if (isNewHigh && score > 0) {
+        newRecordBadge.style.display = 'inline-block';
+        sound.playBonus();
+      } else {
+        newRecordBadge.style.display = 'none';
+      }
+
+      gameoverOverlay.classList.remove('hidden');
+    }
+
+    // --- EVENT LISTENERS ---
+
+    // Mouse Movement
+    window.addEventListener('mousemove', (e) => {
+      crosshair.active = true;
+      const rect = canvas.getBoundingClientRect();
+      crosshair.targetX = e.clientX - rect.left;
+      crosshair.targetY = e.clientY - rect.top;
+    });
+
+    // Mouse / Touch Shooting
+    function handlePointerShoot(clientX, clientY) {
+      sound.init();
+      const rect = canvas.getBoundingClientRect();
+      const px = clientX - rect.left;
+      const py = clientY - rect.top;
+      crosshair.x = px;
+      crosshair.y = py;
+      crosshair.targetX = px;
+      crosshair.targetY = py;
+      crosshair.active = true;
+
+      shoot(px, py);
+    }
+
+    container.addEventListener('pointerdown', (e) => {
+      if (gameState !== 'PLAYING') return;
+      // If clicking interactive HUD buttons, ignore
+      if (e.target.closest('#hud-controls-top') || e.target.closest('#reload-btn') || e.target.closest('.icon-btn')) {
+        return;
+      }
+      handlePointerShoot(e.clientX, e.clientY);
+    });
+
+    // Keyboard controls
+    window.addEventListener('keydown', (e) => {
+      sound.init();
+      if (e.key === 'r' || e.key === 'R') {
+        if (gameState === 'PLAYING') {
+          reload();
+        }
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        if (gameState === 'PLAYING') {
+          shoot(crosshair.x, crosshair.y);
+        } else if (gameState === 'START') {
+          startGame();
+        } else if (gameState === 'GAMEOVER') {
+          startGame();
+        }
+      } else if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+        if (gameState === 'PLAYING' || gameState === 'PAUSED') {
+          togglePause();
+        }
+      }
+    });
+
+    // Buttons
+    startBtn.addEventListener('click', startGame);
+    resumeBtn.addEventListener('click', togglePause);
+    restartBtn.addEventListener('click', startGame);
+    pauseRestartBtn.addEventListener('click', startGame);
+    pauseBtn.addEventListener('click', togglePause);
+    reloadBtn.addEventListener('click', reload);
+    reloadBanner.addEventListener('click', reload);
+
+    // --- ANIMATION & RENDER LOOP ---
+
+    function drawGrid(c) {
+      // Subtle tactical background grid
+      c.strokeStyle = 'rgba(56, 189, 248, 0.04)';
+      c.lineWidth = 1;
+      const gridSize = 45;
+
+      for (let x = 0; x < width; x += gridSize) {
+        c.beginPath();
+        c.moveTo(x, 0);
+        c.lineTo(x, height);
+        c.stroke();
+      }
+      for (let y = 0; y < height; y += gridSize) {
+        c.beginPath();
+        c.moveTo(0, y);
+        c.lineTo(width, y);
+        c.stroke();
+      }
+
+      // Vignette effect
+      const grad = c.createRadialGradient(width / 2, height / 2, width * 0.25, width / 2, height / 2, width * 0.7);
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, 'rgba(3, 7, 18, 0.65)');
+      c.fillStyle = grad;
+      c.fillRect(0, 0, width, height);
+    }
+
+    function drawCrosshair(c, x, y, recoil) {
+      c.save();
+      c.translate(x, y);
+
+      const r = 16 + recoil;
+      const lineLen = 10;
+
+      // Glow
+      c.shadowColor = '#38bdf8';
+      c.shadowBlur = 8;
+      c.strokeStyle = '#38bdf8';
+      c.lineWidth = 2;
+
+      // Center ring
+      c.beginPath();
+      c.arc(0, 0, r, 0, Math.PI * 2);
+      c.stroke();
+
+      // Center red dot
+      c.beginPath();
+      c.arc(0, 0, 2.5, 0, Math.PI * 2);
+      c.fillStyle = '#ef4444';
+      c.fill();
+
+      // Cross ticks
+      c.beginPath();
+      c.moveTo(0, -r - lineLen);
+      c.lineTo(0, -r + 2);
+      c.moveTo(0, r + lineLen);
+      c.lineTo(0, r - 2);
+      c.moveTo(-r - lineLen, 0);
+      c.lineTo(-r + 2, 0);
+      c.moveTo(r + lineLen, 0);
+      c.lineTo(r - 2, 0);
+      c.stroke();
+
+      // If reloading, draw progress ring around crosshair
+      if (isReloading) {
+        const elapsed = performance.now() - reloadStartTime;
+        const progress = Math.min(1, elapsed / RELOAD_TIME);
+
+        c.beginPath();
+        c.arc(0, 0, r + 9, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+        c.strokeStyle = '#f59e0b';
+        c.lineWidth = 3;
+        c.stroke();
+      }
+
+      c.restore();
+    }
+
+    function loop(timestamp) {
+      const dt = Math.min(timestamp - lastTime, 64);
+      lastTime = timestamp;
+
+      // Smooth Crosshair tracking
+      crosshair.x += (crosshair.targetX - crosshair.x) * 0.45;
+      crosshair.y += (crosshair.targetY - crosshair.y) * 0.45;
+      if (crosshair.recoil > 0) {
+        crosshair.recoil = Math.max(0, crosshair.recoil - dt * 0.1);
+      }
+
+      // Screen Shake decay
+      let offsetX = 0;
+      let offsetY = 0;
+      if (screenShake > 0) {
+        offsetX = (Math.random() - 0.5) * screenShake * 2;
+        offsetY = (Math.random() - 0.5) * screenShake * 2;
+        screenShake = Math.max(0, screenShake - dt * 0.03);
+      }
+
+      ctx.save();
+      ctx.translate(offsetX, offsetY);
+
+      // Clear Canvas
+      ctx.fillStyle = '#0b0f19';
+      ctx.fillRect(-20, -20, width + 40, height + 40);
+
+      // Draw Grid & Ambience
+      drawGrid(ctx);
+
+      // Draw Bullet Holes
+      for (let i = bulletHoles.length - 1; i >= 0; i--) {
+        const bh = bulletHoles[i];
+        bh.update();
+        bh.draw(ctx);
+        if (bh.alpha <= 0) bulletHoles.splice(i, 1);
+      }
+
+      // Update & Draw Targets
+      if (gameState === 'PLAYING') {
+        spawnTargetLogic(dt);
+      }
+
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i];
+        if (gameState === 'PLAYING') {
+          t.update(dt);
+        }
+        t.draw(ctx);
+        if (!t.alive) {
+          targets.splice(i, 1);
+        }
+      }
+
+      // Draw Particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.update();
+        p.draw(ctx);
+        if (p.alpha <= 0) particles.splice(i, 1);
+      }
+
+      // Draw Muzzle Flash bursts
+      for (let i = muzzleFlashes.length - 1; i >= 0; i--) {
+        const mf = muzzleFlashes[i];
+        mf.alpha -= 0.12;
+
+        ctx.save();
+        ctx.translate(mf.x, mf.y);
+        ctx.globalAlpha = Math.max(0, mf.alpha);
+
+        // Core flash
+        const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, mf.radius);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.3, '#fef08a');
+        grad.addColorStop(0.7, '#f97316');
+        grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, 0, mf.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Radial spikes
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        for (let j = 0; j < mf.rays; j++) {
+          const a = (j * Math.PI * 2) / mf.rays;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(a) * (mf.radius * 1.5), Math.sin(a) * (mf.radius * 1.5));
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        if (mf.alpha <= 0) muzzleFlashes.splice(i, 1);
+      }
+
+      // Draw Floating Scores & Texts
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.update();
+        ft.draw(ctx);
+        if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+      }
+
+      // Full-screen Flash effect (Hit hazard / Bullseye)
+      if (flashAlpha > 0) {
+        ctx.save();
+        ctx.fillStyle = flashColor;
+        ctx.globalAlpha = flashAlpha;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+        flashAlpha = Math.max(0, flashAlpha - dt * 0.003);
+      }
+
+      // Draw Crosshair (if within play area)
+      if (crosshair.active && gameState === 'PLAYING') {
+        drawCrosshair(ctx, crosshair.x, crosshair.y, crosshair.recoil);
+      }
+
+      ctx.restore();
+
+      requestAnimationFrame(loop);
+    }
+
+    // Start render loop
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
